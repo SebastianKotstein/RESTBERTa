@@ -3,24 +3,36 @@ This repository is the official implementation of the journal article ["RESTBERT
 Additional materials (datasets and reports of executed notebooks) can be found on [Zenodo](https://zenodo.org/records/10118349). The fine-tuned models (best checkpoints) are available on [Hugging Face](https://huggingface.co/SebastianKotstein).
 
 ## Web API and UI for Inference
-We implemented a Flask application that places our model behind a Web API and UI for inference.
+We created a Flask app that enables the application of a RESTBERTa model through a Web API and UI.
 To use this application, navigate to [tools](https://github.com/SebastianKotstein/RESTBERTa/tree/master/tools) and create a docker image with:
 ```
 docker build -t restberta-core .
 ```
-Start the docker container with:
+Use one of the following commands to start the application. Set the ```MODEL``` parameter to specify the RESTBERTa model that should be loaded.
+
+### Parameter Matching
+Run the following command to start a container with the RESTBERTa model that has been fine-tuned to parameter matching exclusively:
 ```
-docker run -d -p 80:80 --name pm-cpu restberta-core
+docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-parameter-matching --name pm-cpu restberta-core
 ```
-If you want to start the application for another Web API integration task, i.e., with another RESTBERTa model (e.g., for endpoint discovery, see [RESTBERTa](https://github.com/SebastianKotstein/RESTBERTa)), specify the model as ENV parameter:
+### Endpoint Discovery
+Run the following command to start a container with the RESTBERTa model that has been fine-tuned to endpoint discovery exclusively:
 ```
 docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-endpoint-discovery --name ed-cpu restberta-core
 ```
+### Parameter Matching and Endpoint Discovery
+Run the following command to start a container with the RESTBERTa model that has been fine-tuned to both tasks:
+```
+docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-pm-ed --name pm-ed-cpu restberta-core
+```
+
 ### Web UI
-To open the Web UI, use a browser and navigate to http://localhost:80.
+To use the Web UI, open a browser and navigate to http://localhost:80.
 
 ### Web API
-Use the following cURL to make a prediction:
+The Web API is exposed over the same endpoints as the Web UI. For proper routing of HTTP requests to the Web API, it is therefore essential to set the ```Accept``` and ```Content-Type``` headers and
+specify either ```application/json``` or one of the application-specific MIME-types (see OpenAPI documentation) as request and response format.
+Use the following cURL to make a prediction, for instance:
 ```
 curl -L 'http://localhost:80/predict' \
 -H 'Accept: application/vnd.skotstein.restberta-core.results.v1+json' \
