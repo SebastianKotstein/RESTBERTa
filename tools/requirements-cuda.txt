@@ -1,0 +1,5 @@
+transformers==4.33.2
+flask==3.0.0
+flask-swagger-ui==4.11.1
+werkzeug==3.0.0
+uwsgi==2.0.23

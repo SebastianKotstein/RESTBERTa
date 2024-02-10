@@ -1,0 +1,325 @@
+openapi: '3.0.2'
+info:
+  title: RESTBERTa Core Web API
+  version: '1.0'
+servers:
+  - url: http://127.0.0.1:5000
+
+components:
+  schemas:
+    hyperlink:
+        type: object
+        properties:
+          rel:
+            type: string
+            example: "self"
+          href:
+            type: string
+            example: "/"
+    error:
+      type: object
+      description: "Error object"
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-10-28T20:10:42"
+          description: "Timestamp when the error occured"
+        status:
+          type: integer
+          example: 400
+          description: "HTTP status code of this error"
+        error:
+          type: string
+          example: "Bad request"
+          description: "Short error description"
+        message:
+          type: string
+          example: "The query '$.schemas[0].queries[0]' has no property 'value'"
+          description: "Detailed error description"
+        path:
+          type: string
+          example: "/predict"
+          description: "Invoked path"
+        _links:
+          type: array
+          items:
+            $ref: '#/components/schemas/hyperlink'
+          description: "List of advertised links for feasible follow-up actions"
+    schemas:
+      type: object
+      properties:
+        schemas:
+          type: array
+          description: "List of schema object. This list must contain at least one schema object."
+          items:
+            type: object
+            description: "Schema object"
+            properties:
+              schemaId:
+                type: string
+                example: "s0"
+                description: "Optional identifier to re-identify schema in list of results"
+              name:
+                type: string
+                example: "My schema"
+                description: "Optional schema name"
+              value:
+                type: string
+                example: "auth.key location.city location.city_id location.country location.lat location.lon location.postal_code state units"
+                description: "Space separated list of Web API elements of the schema. This list must contain at least one element."
+              queries:
+                type: array
+                description: "List of queries for this schema. The list must contain at least one query object."
+                items:
+                  description: "Query object"
+                  properties:
+                    queryId:
+                      type: string
+                      example: "q0"
+                      description: "Optional identifier to re-identify query in the list of results"
+                    name:
+                      type: string
+                      example: "My query"
+                      description: "Optional query name"
+                    value:
+                      type: string
+                      example: "The ZIP of the city"
+                      description: "The query in natural language"
+                    verboseOutput:
+                      type: boolean
+                      description: "If the verbose flag is set to 'true', the result object of this query will contain details about processed tokens and fragments"
+                  required:
+                    - value
+            required:
+              - value
+              - queries
+    answer:
+      type: object
+      description: "Suggested Web API element"
+      properties:
+        start_char_index:
+          type: integer
+          example: 70
+          description: "Zero-based index of the first character of the predicted answer span in the schema"
+        end_char_index:
+          type: integer
+          example: 91
+          description: "Zero-based index of the first character after the last character of the prediced answer span in the schema"
+        span:
+          type: string
+          example: "location.lon location"
+          description: "Predicted answer span"
+        score:
+          type: string
+          example: "1.1224375"
+          description: "Calculated score of the predicted answer span, which is the sum of the logits of start and end of the answer span"
+        probability:
+          type: string
+          example: "80.24"
+          description: "Calculated probability (softmax) over all scores. This is an experimental feature and should be treated with caution."
+        property:
+          type: object
+          description: "The suggested Web API element resulting from the predicted answer span"
+          properties:
+            start_char_index:
+              type: integer
+              example: 70
+              description: "Zero-based index of the first covered character of the suggested Web API element, i.e., that is within the answer span. Note that the answer span might contain more characters that the suggested Web API element and the element might be partially covered by the answer span."
+            end_char_index:
+              type: integer
+              example: 82
+              description: "Zero-based index of either the last covered character of the suggested Web API element, i.e., that is within the answer span or, if the last character of the element is adjacent to the last character of the answer span, the first character after the last character of the prediced answer span. Note that the answer span might contain more characters that the suggested Web API element and the element might be partially covered by the answer span."
+            name:
+              type: string
+              example: "location.lon"
+              description: "Suggested Web API element"
+            partial_name:
+              type: string
+              example: "location.lon"
+              description: "Part of the Web API element that is covered by the answer span"
+            partial:
+              type: boolean
+              example: false
+              description: "Flag that indicates whether the suggested Web API element is only partially covered by the answer span"
+            length:
+              type: integer
+              example: 12
+              description: "Number of covered characters of the suggested Web API elements in the answer span"
+        
+    results:
+      type: object
+      description: "Object containing the predicted answers to the submitted schemas and queries"
+      properties:
+        schemas:
+          type: array
+          description: "List of submitted schemas"
+          items:
+            type: object
+            description: "Submitted schema"
+            properties:
+              schemaId:
+                type: string
+                example: "s0"
+                description: "Specified schema identifier. This property is assigned a auto-generated UUID if no identifier has been specified."
+              name:
+                type: string
+                example: "My schema"
+                description: "The specified name of the schema. This property is assigned a auto-generated name consisting of the schema identifier prefixed with 'Schema ' if not name has been specified."
+              value:
+                type: string
+                example: "auth.key location.city location.city_id location.country location.lat location.lon location.postal_code state units"
+                description: "Space separated list of Web API elements of the schema."
+              queries:
+                type: array
+                description: "List of results for each query"
+                items:
+                  type: object
+                  description: "Result object"
+                  properties:
+                    queryId:
+                      type: string
+                      example: "q0"
+                      description: "Specified query identifier. This property is assigned a auto-generated UUID if no identifier has been specified."
+                    name:
+                      type: string
+                      example: "My query"
+                      description: "The specified name of the query. This property is assigned a auto-generated name consisting of the schema identifier prefixed with 'Schema ' if not name has been specified."
+                    value:
+                      type: string
+                      example: "The ZIP of the city"
+                      description: "The query in natural language"
+                    verboseOutput:
+                      type: boolean
+                      description: "Verbose output flag of the query."
+                    result:
+                      type: object
+                      description: "The result object containing the answers"
+                      properties:
+                        answers:
+                          type: array
+                          description: "Ranked list of suggested Web API elements over all tokenized samples sorted by score"
+                          items:
+                            $ref: "#/components/schemas/answer"
+                        isCached:
+                          type: boolean
+                          example: true
+                          description: "Flag indicating whether the returned answers had been loaded from cache"
+                        tokenizedSamples:
+                          type: array
+                          description: "List of processed tokenized samples and their individual predicted answer spans"
+                          items:
+                            type: object
+                            description: "The result object for a tokenized sample containing its answers"
+                            properties:
+                              answers:  
+                                items:  
+                                  $ref: "#/components/schemas/answer"
+                              fragment:
+                                type: string
+                                example: "auth.key location.city location.city_id location.country"
+                                description: "Fragment of the original schema that is covered in this tokenized sample. This property is 'null', if the 'verboseOutput' flag is set to 'false'."
+                              fragment_tokens:
+                                type: array
+                                description: "Tokens of the original schema that are covered in this tokenized sample. This property is 'null', if the 'verboseOutput' flag is set to 'false'."
+                                items:
+                                  type: string
+                                  example: 
+                                    - "Ġlocation"
+                                    - "."
+                                    - "city"
+                              tokens:
+                                type: array
+                                description: "All tokens of this tokenized samples. This includes the tokens of the query plus the tokens of the fragment plus special tokens. This property is 'null', if the 'verboseOutput' flag is set to 'false'."
+                                items:
+                                  type: string
+                                  example:
+                                    - "<s>"
+                                    - "The"
+                                    - "ĠZIP"
+                                    - "</s>"
+                                    - "Ġlocation"
+                                    - "."
+                                    - "city"
+                                    - "<pad>"
+        _links:
+          type: array
+          items:
+            $ref: '#/components/schemas/hyperlink'
+          description: "List of advertised links for feasible follow-up actions"
+  parameters:
+    duplicates:
+      name: duplicates
+      in: query
+      required: false
+      description: "If set to 'suppress', duplicates will be removed from the ranked list of suggested Web API elements so that a suggested Web API element occurs only once with the highest score among all its duplicates"
+      schema:
+        type: string
+        enum:
+          - "suppress"
+    top:
+      name: top 
+      in: query
+      required: false
+      description: "If set, only the 'x' highest ranked suggested Web API elements will be returned per result list"
+      schema:
+        type: integer
+
+paths:
+  /:
+    get:
+      tags:
+      - Entry Point
+      summary: "Endpoint serving as entry point of this API"
+      description: "Returns a link for making predictions"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.skotstein.restberta-core.hypermedia.v1+json:
+              schema:
+                type: object
+                properties:
+                  _links:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/hyperlink'
+                example:
+                  _links:
+                  - rel: self
+                    href: /
+  /predict:
+    post:
+      tags:
+      - Prediction
+      summary: "Endpoint for making predictions"
+      description: "Endpoint for making one or multiple predictions for the passed schemas and queries"
+      parameters:
+        - $ref: "#/components/parameters/duplicates"
+        - $ref: "#/components/parameters/top"
+      requestBody:
+        required: true
+        content:
+          application/vnd.skotstein.restberta-core.schemas.v1+json:
+            schema:
+              $ref: "#/components/schemas/schemas"
+      responses:
+        '200':
+          description: "Predicted answer spans with suggested Web API elements"
+          content:
+            application/vnd.skotstein.restberta-core.results.v1+json:
+              schema:
+                $ref: "#/components/schemas/results"
+        '400':
+          description: "Missing property in request payload"
+          content:
+            application/vnd.skotstein.restberta-core.error.v1+json:
+              schema:
+                $ref: "#/components/schemas/error"
+
+
+
+          
+
+
+

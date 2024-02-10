@@ -1,0 +1,162 @@
+<!--
+Copyright 2023 Sebastian Kotstein
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+<!DOCTYPE html>
+<html lang='de'>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<link rel="stylesheet" href="{{ url_for('static', filename= 'css/style.css') }}">
+<title id="page-title">{{ header }}</title>
+<script>
+
+	function clearResults(){
+        document.getElementById("predictions-table").innerHTML = "";
+    }
+
+    function submitQuery(){
+        const data = {
+			schemas: [
+				{
+					value: document.getElementById("schema_text").value,
+					queries: [
+						{
+							value: document.getElementById("query_text").value
+						}
+					]
+				}
+			]	
+        }
+        clearResults();
+
+		var uri = "/predict?top="+document.getElementById("limit").value;
+
+		if(document.getElementById("remove_duplicates").checked){
+			uri += "&duplicates=suppress"
+		}
+
+        fetch(uri,{
+            method: "POST",
+            headers:{
+				"Content-Type": "application/vnd.skotstein.restberta-core.schemas.v1+json",
+				"Accept": "application/vnd.skotstein.restberta-core.results.v1+json"
+			},
+			body: JSON.stringify(data),
+        }).then(function(response){
+			return response.json();
+		}).then(function(json){
+            addResults(json);
+        });
+    }
+
+	function addResultHeader(){
+		var table = document.getElementById("predictions-table");
+		table.innerHTML = "<thead><tr><th style='width:360px'>{{ answer }}</th><th style='width:80px'>Score</th></tr></thead><tbody id='predictions-table-body'></tbody>";
+	}
+
+    function addResults(json){
+		addResultHeader();
+		answers = json.schemas[0].queries[0].result.answers;
+
+        for(var i = 0; i < answers.length; i++){
+            addResult(answers[i]);
+        }
+    }
+
+    function addResult(answer){
+        var table = document.getElementById("predictions-table-body");
+		var tableRow = document.createElement("tr");
+		table.appendChild(tableRow);
+		var td1 = document.createElement("td");
+        if(answer.property == null){
+            td1.innerHTML = "<no answer>";
+        }else{
+            td1.innerHTML = answer.property.name;
+        }
+		
+		tableRow.appendChild(td1);
+		var td2 = document.createElement("td");
+		td2.innerHTML = answer.score;
+		tableRow.appendChild(td2);
+    }
+</script>
+</head>
+
+<body>
+	<div class="container">
+		<div class="page-header">
+			<h1>{{ header }}</h1>
+		</div>
+		<nav aria-label="breadcrumb">
+			<ol class="breadcrumb">
+				<li class="breadcrumb-item">Home</li>
+			</ol>
+		</nav>
+		<div class="page-element">
+			<div>
+				<form style="overflow: auto;">
+					<table>
+						<tr>
+							<td>
+								<p class="config-heading">Query:</p>
+							</td>
+						</tr>
+						<tr>
+							<td class="td-input">
+								<textarea name="query_text" id="query_text" rows="2" style="width: 480px"></textarea>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<p class="config-heading">{{ paragraph }}:</p>
+							</td>
+						</tr>
+						<tr>
+							<td class="td-input">
+								<textarea name="schema_text" id="schema_text" rows="4" style="width: 480px">{{ example }}</textarea>
+							</td>
+						</tr>
+						<tr>
+							<td class="td-label">Limit:</td>
+						</tr>
+						<tr>
+							<td class="td-input">
+								<input type="number" name="limit" id="limit" min="1" max="100" value="20">
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<label class="switch">
+									<input type="checkbox" name="remove_duplicates" id="remove_duplicates" checked><span class="slider_sw"></span></input>
+								</label>
+								<p class="switch-label"><i>Remove duplicates</i></p>
+							</td>
+						</tr>
+					</table>
+                    <p class="ml-1"><i>Results:</i></p>
+                    <table class="data-table ml-1" id="predictions-table">
+                    </table>
+                    
+					<div class="btn-tray pt-2">
+						<button class="btn-cancel btn-normal" type="button" onclick="clearResults()">Clear Results</button>
+						<button class="btn-confirm btn-normal" type="button" onclick="submitQuery()">Submit</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	
+</body>
+
+</html>
