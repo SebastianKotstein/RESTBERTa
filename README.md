@@ -32,7 +32,7 @@ To use the Web UI, open a browser and navigate to http://localhost:80.
 ### Web API
 The Web API is exposed over the same endpoints as the Web UI. For proper routing of HTTP requests to the Web API, it is therefore essential to set the ```Accept``` and ```Content-Type``` headers and
 specify either ```application/json``` or one of the application-specific MIME-types (see OpenAPI documentation) as request and response format.
-Use the following cURL to make a prediction, for instance:
+Use the following cURL to make a prediction:
 ```
 curl -L 'http://localhost:80/predict' \
 -H 'Accept: application/vnd.skotstein.restberta-core.results.v1+json' \
