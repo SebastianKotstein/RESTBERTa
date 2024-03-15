@@ -21,6 +21,8 @@ from .output_interpreter import OutputInterpreter
 from .lru_cache import LRUCache
 import uuid
 
+import numpy as np
+
 class InvalidRequestException(Exception):
     def __init__(self, message="Invalid request") -> None:
         self.message = message
@@ -33,7 +35,7 @@ class Pipeline:
         self.model = QAModel(model_checkpoint)
         self.interpreter = OutputInterpreter(best_size)
         if cache_size:
-            self.cache = LRUCache(cache_size,True)
+            self.cache = LRUCache(cache_size,False)
         else:
             self.cache = None
     
@@ -47,7 +49,8 @@ class Pipeline:
         else:
             results = self.interpreter.create_empty_results_dict()
         merged_output = self.merge_results_w_input_json(input_dict,results)
-        return self.limit_results(merged_output,top,suppress_duplicates)
+        merged_output = self.limit_results(merged_output,top,suppress_duplicates)
+        return self.calculate_probabilites(merged_output)
     
     def sort_schema_values(self, input_dict):
         if "schemas" in input_dict:
@@ -84,7 +87,36 @@ class Pipeline:
                 if "<no-answer>" not in without_duplicates:
                     without_duplicates["<no-answer>"] = answer
         return [x for x in without_duplicates.values()]
-
+    
+    def calculate_probabilites(self, input_dict):
+        for schema in input_dict["schemas"]:
+            for query in schema["queries"]:
+                if query["result"]:
+                    result = query["result"]
+                    
+                    # calculate softmax for aggregated answer set
+                    scores = np.array([float(answer["score"]) for answer in result["answers"]])
+                    #print(scores)
+                    softmax = np.exp(scores)/sum(np.exp(scores))
+                    for i in range(len(result["answers"])):
+                        # convert score (float) into string
+                        #result["answers"][i]["score"] = str(result["answers"][i]["score"])
+                        # add probability
+                        result["answers"][i]["probability"] = str(softmax[i])
+                    
+                    for tokenized_sample in result["tokenizedSamples"]:
+                        # calculate softmax for each tokenized sample
+                        scores = np.array([float(answer["score"]) for answer in tokenized_sample["answers"]])
+                        #print(scores)
+                        softmax = np.exp(scores)/sum(np.exp(scores))
+                        sum_softmax = 0.0
+                        for i in range(len(tokenized_sample["answers"])):
+                            # convert score (float) into string
+                            #tokenized_sample["answers"][i]["score"] = str(tokenized_sample["answers"][i]["score"])
+                            # add probability
+                            tokenized_sample["answers"][i]["probability"] = str(softmax[i])
+        return input_dict
+                    
     
     def json_to_batch(self, input_dict):
         

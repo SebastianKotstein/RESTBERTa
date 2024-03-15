@@ -21,9 +21,8 @@ class OutputInterpreter:
     def __init__(self, best_size: int) -> None:
         self.n_best_size = best_size
     
-    def interpret_output(self, tokenized_samples, model_output, batch_size, suppress_duplicates = False):
+    def interpret_output(self, tokenized_samples, model_output, batch_size):
         
-        # TODO: Convert score to str in a final step, i.e., after processing results (instead of converting it temporarily back to float for sorting)
         results = self.create_empty_results_dict()
 
         for i in range(batch_size):
@@ -63,8 +62,8 @@ class OutputInterpreter:
                 cls_index=tokenized_samples["tokenized_sample_cls_index"][i],
                 paragraph=tokenized_samples["qa_sample_paragraph"][i],
                 predicted_start_logits=model_output.start_logits[i],
-                predicted_end_logits=model_output.start_logits[i],
-                suppress_duplicates=suppress_duplicates
+                predicted_end_logits=model_output.start_logits[i]
+                #suppress_duplicates=suppress_duplicates
             )
             tokenized_sample["answers"] = answers
 
@@ -81,7 +80,7 @@ class OutputInterpreter:
                 for answer in tokenized_sample["answers"]:
                     # append answer of tokenized sample if it is NOT an out of span answer
                     if answer["property"] is not None:
-                        combined_answers.append(answer)
+                        combined_answers.append(answer.copy())
             
             # sort list of combined answers
             combined_answers = sorted(combined_answers, key=lambda x: float(x["score"]), reverse=True)
@@ -334,7 +333,7 @@ class OutputInterpreter:
             return False
     
 
-    def get_answers(self, offset_mapping, cls_index, paragraph, predicted_start_logits, predicted_end_logits, suppress_duplicates=False):
+    def get_answers(self, offset_mapping, cls_index, paragraph, predicted_start_logits, predicted_end_logits):
         
         # Gather the indices for the best start/end logits (index syntax is: [stop:start:steps] with steps = -1 --> negative order)
         # np.argsort returns a sorted list of indices in ascending order, therefore, we gather the last 'n_best_size' indices
@@ -401,24 +400,26 @@ class OutputInterpreter:
         # sort valid answers by score in descending order
         sorted_valid_answer = sorted(valid_answers, key=lambda x: x["score"], reverse=True)
         
-        if suppress_duplicates:
-            without_duplicates = {}
-            for answer in sorted_valid_answer:
-                if answer["property"] is not None and answer["property"]["name"] in without_duplicates: 
-                    if answer["score"] > without_duplicates[answer["property"]["name"]]["score"]:
-                        without_duplicates[answer["property"]["name"]] = answer
-                elif "<no-answer>" not in without_duplicates and answer["property"] is None:
-                    without_duplicates["<no-answer>"] = answer
-                else:
-                    without_duplicates[answer["property"]["name"]] = answer
-                    
-            sorted_valid_answer = [x for x in without_duplicates.values()]
+        # sourced out to pipeline.py as we want to suppress duplicates in both the aggregated answer set and the set per tokenized sample
+        #if suppress_duplicates:
+        #    without_duplicates = {}
+        #    for answer in sorted_valid_answer:
+        #        if answer["property"] is not None and answer["property"]["name"] in without_duplicates: 
+        #            if answer["score"] > without_duplicates[answer["property"]["name"]]["score"]:
+        #                without_duplicates[answer["property"]["name"]] = answer
+        #        elif "<no-answer>" not in without_duplicates and answer["property"] is None:
+        #            without_duplicates["<no-answer>"] = answer
+        #        else:
+        #            without_duplicates[answer["property"]["name"]] = answer
+        #            
+        #    sorted_valid_answer = [x for x in without_duplicates.values()]
 
-        scores = np.array([answer["score"] for answer in sorted_valid_answer])
-        softmax = np.exp(scores)/sum(np.exp(scores))
+        #scores = np.array([answer["score"] for answer in sorted_valid_answer])
+        #softmax = np.exp(scores)/sum(np.exp(scores))
         
         for i in range(len(sorted_valid_answer)):
             sorted_valid_answer[i]["score"] = str(sorted_valid_answer[i]["score"])
-            sorted_valid_answer[i]["probability"] = str(softmax[i])
+        #    sorted_valid_answer[i]["probability"] = str(softmax[i])
+
             
         return sorted_valid_answer
