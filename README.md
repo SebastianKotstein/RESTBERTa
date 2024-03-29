@@ -23,7 +23,7 @@ docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-endpoint-discover
 ### Parameter Matching and Endpoint Discovery
 Run the following command to start a container with the RESTBERTa model that has been fine-tuned to both tasks:
 ```
-docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-pm-ed --name pm-ed-cpu restberta-core
+docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-pm-ed --name my-model-cpu restberta-core
 ```
 ### Custom Models
 To start a container with a custom model hosted on Hugging Face, you can specify any model repository using the ```MODEL``` parameter. Additionally, if the model repository is private, the ```TOKEN``` parameter allows you to set a Hugging Face access token, e.g.:
