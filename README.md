@@ -25,7 +25,11 @@ Run the following command to start a container with the RESTBERTa model that has
 ```
 docker run -d -p 80:80 -e MODEL=SebastianKotstein/restberta-qa-pm-ed --name pm-ed-cpu restberta-core
 ```
-
+### Custom Models
+To start a container with a custom model hosted on Hugging Face, you can specify any model repository using the ```MODEL``` parameter. Additionally, if the model repository is private, the ```TOKEN``` parameter allows you to set a Hugging Face access token, e.g.:
+```
+docker run -d -p 80:80 -e MODEL=my-user/my-qa-model -e TOKEN=hf_12345678 --name pm-ed-cpu restberta-core
+```
 ### Web UI
 To use the Web UI, open a browser and navigate to http://localhost:80.
 
