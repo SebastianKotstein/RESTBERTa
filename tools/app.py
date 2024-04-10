@@ -50,8 +50,13 @@ if "CACHE" in os.environ:
 else:
     cache_size = 100
 
+if "TOKEN" in os.environ:
+    token = os.environ["TOKEN"]
+else:
+    token = None
+
 print("Model: ",model)
-pipeline = Pipeline(model,best_size,cache_size)
+pipeline = Pipeline(model,best_size,cache_size,token)
 
 SWAGGER_URL = '/docs' 
 OPEN_API_FILE = '/openapi.yml'  

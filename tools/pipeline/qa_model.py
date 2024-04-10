@@ -18,9 +18,12 @@ import tensorflow as tf
 from transformers import TFAutoModelForQuestionAnswering
 
 class QAModel:
-    def __init__(self, checkpoint, batch_size = None) -> None:
+    def __init__(self, checkpoint, batch_size = None, token = None) -> None:
         print(tf.config.list_physical_devices('GPU'))
-        self.model = TFAutoModelForQuestionAnswering.from_pretrained(checkpoint)
+        if token:
+            self.model = TFAutoModelForQuestionAnswering.from_pretrained(checkpoint, token = token)
+        else:
+            self.model = TFAutoModelForQuestionAnswering.from_pretrained(checkpoint)
         self.batch_size = batch_size
         
     

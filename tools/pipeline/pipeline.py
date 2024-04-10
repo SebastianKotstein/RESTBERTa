@@ -30,9 +30,9 @@ class InvalidRequestException(Exception):
 
 class Pipeline:
     
-    def __init__(self, model_checkpoint, best_size = 20, cache_size = 1000) -> None:
+    def __init__(self, model_checkpoint, best_size = 20, cache_size = 1000, token = None) -> None:
         self.tokenizer = InputTokenizer("microsoft/codebert-base")
-        self.model = QAModel(model_checkpoint)
+        self.model = QAModel(model_checkpoint, token=token)
         self.interpreter = OutputInterpreter(best_size)
         if cache_size:
             self.cache = LRUCache(cache_size,False)
