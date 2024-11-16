@@ -4,7 +4,7 @@ Additional materials (datasets and reports of executed notebooks) can be found o
 
 ## Web API and UI for Inference
 We created a Flask app that enables the application of a RESTBERTa model through a Web API and UI.
-To use this application, navigate to [tools](https://github.com/SebastianKotstein/RESTBERTa/tree/master/tools) and create a docker image with:
+To use this application, download this repository, navigate to [tools](https://github.com/SebastianKotstein/RESTBERTa/tree/master/tools), and create a docker image with:
 ```
 docker build -t restberta-core .
 ```
