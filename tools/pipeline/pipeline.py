@@ -48,8 +48,9 @@ class Pipeline:
             results = self.interpreter.interpret_output(tokenized_samples,output,batch_size)
         else:
             results = self.interpreter.create_empty_results_dict()
-        merged_output = self.merge_results_w_input_json(input_dict,results)
+        merged_output, to_be_cached = self.merge_results_w_input_json(input_dict,results)
         merged_output = self.limit_results(merged_output,top,suppress_duplicates)
+        self.store_items_in_cache(to_be_cached)
         return self.calculate_probabilites(merged_output)
     
     def sort_schema_values(self, input_dict):
@@ -184,6 +185,7 @@ class Pipeline:
         '''
     
     def merge_results_w_input_json(self, input_dict, results):
+        to_be_cached = []
         for schema in input_dict["schemas"]:
             for query in schema["queries"]:
                 if self.cache and self.cache.has(schema["value"],query["value"],query["verboseOutput"]):
@@ -200,9 +202,23 @@ class Pipeline:
                             query["result"]["isCached"]= False
 
                             if self.cache:
-                                self.cache.store(schema["value"],query["value"],result,query["verboseOutput"])
-        return input_dict
-
+                                #BUG-FIX: We MUST NOT store new items in cache until all schemas/queries have been processed.
+                                #If we store a new item in cache, an old item might be evicted although it is assumed to be in cache
+                                #self.cache.store(schema["value"],query["value"],result,query["verboseOutput"])
+                                to_be_cached.append({
+                                    "schema": schema["value"],
+                                    "query": query["value"],
+                                    "result":result,
+                                    "verbose":query["verboseOutput"]
+                                })
+                if "result" not in query:
+                    print("Warning!")
+        return input_dict, to_be_cached
+    
+    def store_items_in_cache(self, to_be_cached: dict):
+        if self.cache:
+            for item in to_be_cached:
+                self.cache.store(item["schema"],item["query"],item["result"],item["verbose"])
     
     def results_to_json(self, results_dict):
         results = {"results":[]}
