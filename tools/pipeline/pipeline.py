@@ -18,7 +18,7 @@ Copyright 2023 Sebastian Kotstein
 from .input_tokenizer import InputTokenizer
 from .qa_model import QAModel
 from .output_interpreter import OutputInterpreter
-from .lru_cache import LRUCache
+
 import uuid
 
 import numpy as np
@@ -30,27 +30,24 @@ class InvalidRequestException(Exception):
 
 class Pipeline:
     
-    def __init__(self, model_checkpoint, best_size = 20, cache_size = 1000, token = None) -> None:
+    def __init__(self, model_checkpoint, best_size = 20, cache = None, token = None) -> None:
         self.tokenizer = InputTokenizer("microsoft/codebert-base")
         self.model = QAModel(model_checkpoint, token=token)
         self.interpreter = OutputInterpreter(best_size)
-        if cache_size:
-            self.cache = LRUCache(cache_size,False)
-        else:
-            self.cache = None
+        self.cache = cache
     
-    def process(self, input_dict, top = None, suppress_duplicates = False):
+    def process(self, input_dict, top = None, suppress_duplicates = False, no_answer_strategy = None):
         input_dict = self.sort_schema_values(input_dict)
-        batch = self.json_to_batch(input_dict)
+        batch = self.json_to_batch(input_dict,no_answer_strategy)
         if len(batch["qa_sample_id"]):
             tokenized_samples = self.tokenizer.tokenize(batch)
             output, batch_size = self.model.predict(tokenized_samples)
-            results = self.interpreter.interpret_output(tokenized_samples,output,batch_size)
+            results = self.interpreter.interpret_output(tokenized_samples,output,batch_size,no_answer_strategy)
         else:
             results = self.interpreter.create_empty_results_dict()
-        merged_output, to_be_cached = self.merge_results_w_input_json(input_dict,results)
+        merged_output, to_be_cached = self.merge_results_w_input_json(input_dict,results,no_answer_strategy)
+        self.store_items_in_cache(to_be_cached,no_answer_strategy)
         merged_output = self.limit_results(merged_output,top,suppress_duplicates)
-        self.store_items_in_cache(to_be_cached)
         return self.calculate_probabilites(merged_output)
     
     def sort_schema_values(self, input_dict):
@@ -119,7 +116,7 @@ class Pipeline:
         return input_dict
                     
     
-    def json_to_batch(self, input_dict):
+    def json_to_batch(self, input_dict, no_answer_strategy: str):
         
         batch = {
             "qa_sample_id":[],
@@ -162,7 +159,7 @@ class Pipeline:
                 if "verboseOutput" not in query:
                     query["verboseOutput"] = False
 
-                if not self.cache or (self.cache and not self.cache.has(schema["value"],query["value"],query["verboseOutput"])):
+                if not self.cache or (self.cache and not self.cache.has(schema["value"],query["value"],no_answer_strategy,query["verboseOutput"])):
                     batch["qa_sample_id"].append(query["queryId"])
                     batch["qa_sample_title"].append(query["name"])
                     batch["qa_sample_query"].append(query["value"])
@@ -184,12 +181,12 @@ class Pipeline:
             }
         '''
     
-    def merge_results_w_input_json(self, input_dict, results):
+    def merge_results_w_input_json(self, input_dict, results, no_answer_strategy:str):
         to_be_cached = []
         for schema in input_dict["schemas"]:
             for query in schema["queries"]:
-                if self.cache and self.cache.has(schema["value"],query["value"],query["verboseOutput"]):
-                    query["result"] = self.cache.load(schema["value"],query["value"])
+                if self.cache and self.cache.has(schema["value"],query["value"],no_answer_strategy,query["verboseOutput"]):
+                    query["result"] = self.cache.load(schema["value"],query["value"],no_answer_strategy)
                     query["result"]["isCached"]= True
                 else:
                     for i in range(len(results["qa_sample_id"])):
@@ -215,10 +212,10 @@ class Pipeline:
                     print("Warning!")
         return input_dict, to_be_cached
     
-    def store_items_in_cache(self, to_be_cached: dict):
+    def store_items_in_cache(self, to_be_cached: dict, no_answer_strategy:str):
         if self.cache:
             for item in to_be_cached:
-                self.cache.store(item["schema"],item["query"],item["result"],item["verbose"])
+                self.cache.store(item["schema"],item["query"],no_answer_strategy,item["result"],item["verbose"])
     
     def results_to_json(self, results_dict):
         results = {"results":[]}

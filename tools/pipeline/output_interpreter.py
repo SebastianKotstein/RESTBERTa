@@ -21,7 +21,7 @@ class OutputInterpreter:
     def __init__(self, best_size: int) -> None:
         self.n_best_size = best_size
     
-    def interpret_output(self, tokenized_samples, model_output, batch_size):
+    def interpret_output(self, tokenized_samples, model_output, batch_size, no_answer_strategy = None):
         
         results = self.create_empty_results_dict()
 
@@ -70,23 +70,44 @@ class OutputInterpreter:
             # append tokenized sample and its result to the list of results
             results["tokenized_samples"][index].append(tokenized_sample)
         
-
+        # combine answers
+        results = self.combine_answers(results,no_answer_strategy)
+        
+        return results
+    
+    def combine_answers(self, results, no_answer_strategy = None):
         for i in range(len(results["qa_sample_id"])):
-            # prepare list of combined answers, i.e., answers over all tokenized samples
+            #prepare list of combined answers, i.e., answers over all tokenized samples
             combined_answers = []
             # iterate over all tokenized samples of QA sample
             for tokenized_sample in results["tokenized_samples"][i]:
-                # iterate over all answers of tokenized sample
-                for answer in tokenized_sample["answers"]:
-                    # append answer of tokenized sample if it is NOT an out of span answer
-                    if answer["property"] is not None:
-                        combined_answers.append(answer.copy())
+
+                # apply default 'no-answer-strategy': Add all answers except the NULL answer
+                if no_answer_strategy is None or no_answer_strategy == "ignore":
+                    # iterate over all answers of tokenized sample
+                    for answer in tokenized_sample["answers"]:
+                        # append answer of tokenized sample if it is NOT an out of span answer
+                        if answer["property"] is not None:
+                            combined_answers.append(answer.copy())
+
+                # apply 'treshold no-answer-strategy': Add all answers that have a higher score than the NULL answer
+                elif no_answer_strategy == "treshold":
+                    null_answer_score = None
+                    # find NULL answer
+                    for answer in tokenized_sample["answers"]:
+                        if answer["property"] is None:
+                            null_answer_score = float(answer["score"])
+                    # iterave over all answers of tokenized sample
+                    for answer in tokenized_sample["answers"]:
+                        # check whether the answer's score is higher than the score of the NULL answer (and it is not the NULL answer itself)
+                        if float(answer["score"])>=null_answer_score and answer["property"] is not None:
+                            combined_answers.append(answer.copy())
             
             # sort list of combined answers
             combined_answers = sorted(combined_answers, key=lambda x: float(x["score"]), reverse=True)
-            results["answers"].append(combined_answers)
-        
-        return results
+            results["answers"].append(combined_answers)  
+        return results   
+
     
     def create_empty_results_dict(self):
         results = dict()

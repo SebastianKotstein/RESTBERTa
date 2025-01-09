@@ -17,9 +17,10 @@ Copyright 2023 Sebastian Kotstein
 
 from flask import Flask, request, jsonify, render_template, Response, url_for, send_from_directory
 from pipeline.pipeline import Pipeline, InvalidRequestException
+from pipeline.lru_cache import LRUCache
 import json
 from datetime import datetime
-from werkzeug.exceptions import HTTPException, BadRequest
+from werkzeug.exceptions import HTTPException, BadRequest, NotFound
 from flask_swagger_ui import get_swaggerui_blueprint
 from representations import *
 from content_negotiation import *
@@ -56,7 +57,12 @@ else:
     token = None
 
 print("Model: ",model)
-pipeline = Pipeline(model,best_size,cache_size,token)
+if cache_size:
+    cache = LRUCache(cache_size,False)
+else:
+    cache = None
+pipeline = Pipeline(model,best_size,cache,token)
+
 
 SWAGGER_URL = '/docs' 
 OPEN_API_FILE = '/openapi.yml'  
@@ -95,6 +101,7 @@ else:
     example = "auth.key location.city location.city_id location.country location.lat location.lon location.postal_code state units"
     
 app.register_blueprint(swaggerui_blueprint)
+app.config['JSON_SORT_KEYS'] = False
 
 @app.route("/predict",methods=["POST"])
 @produces(MIME_TYPE_APPLICATION_JSON,MIME_TYPE_RESULTS_V1_JSON, default_mime_type=MIME_TYPE_RESULTS_V1_JSON)
@@ -102,6 +109,7 @@ app.register_blueprint(swaggerui_blueprint)
 def api():
     args = request.args
     top_answers_n = None
+    no_answer_strategy = None
 
     suppress_duplicates = False
     if "duplicates" in args and args["duplicates"] == "suppress":
@@ -109,8 +117,16 @@ def api():
 
     if "top" in args and args["top"]:
         top_answers_n = int(args["top"])
+
+    if "no-answer-strategy" in args:
+        no_answer_strategy = args["no-answer-strategy"]
+    else:
+        no_answer_strategy = "ignore"
+    if no_answer_strategy != "treshold" and no_answer_strategy != "ignore":
+        raise BadRequest(description = "Invalid value for query parameter 'no-answer-strategy'. Allowed values are 'ignore' and 'treshold'.")
+
     try:
-        response_payload = pipeline.process(request.json,top_answers_n,suppress_duplicates)
+        response_payload = pipeline.process(request.json,top_answers_n,suppress_duplicates,no_answer_strategy)
         response_payload["_links"] = [
             {
                 "rel":"prediction",
@@ -149,6 +165,93 @@ def base():
         })
         response.mimetype = MIME_TYPE_HYPERMEDIA_V1_JSON
         return response
+    
+@app.route("/cache",methods=["GET"])
+@produces(MIME_TYPE_CACHE_SETTINGS_V1_JSON,MIME_TYPE_APPLICATION_JSON)
+def get_cache_settings():
+    payload = dict()
+    if cache:
+        payload["isEnabled"] = True
+        payload["cacheSize"] = cache_size
+    else:
+        payload["isEnabled"] = False
+
+    payload["_links"] = []
+    if cache:
+        payload["_links"].append({
+            "rel":"cached-items",
+            "href":url_for("get_cached_items")
+        })
+    payload["_links"].append({
+        "rel":"base",
+        "href": url_for("base")
+    })
+    payload["_links"].append({
+        "rel":"self",
+        "href": url_for("get_cache_settings")
+    })
+    
+    response = jsonify(payload)
+    response.mimetype = MIME_TYPE_CACHE_SETTINGS_V1_JSON
+    return response
+
+@app.route("/cache/items",methods=["GET"])
+@produces(MIME_TYPE_CACHED_ITEMS_V1_JSON,MIME_TYPE_APPLICATION_JSON)
+def get_cached_items():
+    payload = dict()
+    if cache:
+        payload = dict()
+        payload["cachedItems"] = []
+        for key in cache.results.keys():
+            id = cache.keys_to_ids[key]
+            payload["cachedItems"].append({
+                "id":id,
+                "key":key,
+                "priority":cache.access_counters[key],
+                "isVerbose":cache.verbose_info[key],
+                "_links":[
+                    {
+                        "rel":"item",
+                        "href":url_for("get_cached_item",id=id)
+                    }
+                ]
+            })
+        response = jsonify(payload)
+        response.mimetype = MIME_TYPE_CACHED_ITEMS_V1_JSON
+        return response
+    else:
+        raise NotFound("The requested resource does not exist, since caching is disabled.")
+
+@app.route("/cache/items/<id>",methods=["GET"])
+@produces(MIME_TYPE_CACHED_ITEMS_V1_JSON, MIME_TYPE_APPLICATION_JSON)
+def get_cached_item(id):
+    if cache:
+        if id in cache.ids_to_keys.keys():
+            payload = dict()
+            payload["id"] = id
+            key = cache.ids_to_keys[id]
+            payload["key"] = key
+            payload["priority"] = cache.access_counters[key]
+            payload["isVerbose"] = cache.verbose_info[key]
+            payload["data"] = cache.results[key]
+            payload["_links"] = [
+                    {
+                        "rel":"collection",
+                        "href":url_for("get_cached_items")
+                    },
+                    {
+                        "rel":"self",
+                        "href":url_for("get_cached_item",id=id)
+                    }
+                ]
+            response = jsonify(payload)
+            response.mimetype = MIME_TYPE_CACHED_ITEM_V1_JSON
+            return response
+        else:
+            raise("The requested cache item with ID '"+id+"' does not exist.")
+    else:
+       raise NotFound("The requested resource does not exist, since caching is disabled.") 
+    
 
 @app.route('/openapi.yml')
 def send_docs():

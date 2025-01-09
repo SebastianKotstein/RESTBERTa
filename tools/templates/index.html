@@ -45,6 +45,9 @@ Copyright 2023 Sebastian Kotstein
 		if(document.getElementById("remove_duplicates").checked){
 			uri += "&duplicates=suppress"
 		}
+		if(!document.getElementById("ignore_no_answer").checked){
+			uri += "&no-answer-strategy=treshold"
+		}
 
         fetch(uri,{
             method: "POST",
@@ -141,6 +144,14 @@ Copyright 2023 Sebastian Kotstein
 									<input type="checkbox" name="remove_duplicates" id="remove_duplicates" checked><span class="slider_sw"></span></input>
 								</label>
 								<p class="switch-label"><i>Remove duplicates</i></p>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<label class="switch">
+									<input type="checkbox" name="ignore_no_answer" id="ignore_no_answer" unchecked><span class="slider_sw"></span></input>
+								</label>
+								<p class="switch-label"><i>Ignore NULL answers</i></p>
 							</td>
 						</tr>
 					</table>
