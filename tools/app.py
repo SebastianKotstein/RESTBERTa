@@ -158,6 +158,14 @@ def base():
                     "href": url_for("api")
                 },
                 {
+                    "rel":"cache",
+                    "href":url_for("get_cache_settings")
+                },
+                {
+                    "rel":"swaggerUI",
+                    "href":SWAGGER_URL
+                },
+                {
                     "rel":"self",
                     "href": url_for("base")
                 }
