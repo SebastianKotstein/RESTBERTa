@@ -256,7 +256,7 @@ def get_cached_item(id):
             response.mimetype = MIME_TYPE_CACHED_ITEM_V1_JSON
             return response
         else:
-            raise("The requested cache item with ID '"+id+"' does not exist.")
+            raise NotFound("The requested cache item with ID '"+id+"' does not exist.")
     else:
        raise NotFound("The requested resource does not exist, since caching is disabled.") 
     
