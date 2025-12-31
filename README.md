@@ -2,6 +2,10 @@
 This repository is the official implementation of the journal article ["RESTBERTa: a Transformer-based question answering approach for semantic search in Web API documentation"](https://link.springer.com/article/10.1007/s10586-023-04237-x) (see citation). It contains notebooks for fine-tuning pre-trained BERT models to the Web API integration tasks of parameter matching and endpoint discovery, notebooks for data preparation and evaluation, and a Flask application to demonstrate the capabilities of RESTBERTa.
 Additional materials (datasets and reports of executed notebooks) can be found on [Zenodo](https://zenodo.org/records/10118349). The fine-tuned models (best checkpoints) are available on [Hugging Face](https://huggingface.co/SebastianKotstein).
 
+## Inference (Jupyter Notebook)
+This repository includes a [Jupyter Notebook](https://github.com/SebastianKotstein/RESTBERTa/blob/master/Inference.ipynb) that demonstrates the application of a RESTBERTa model.
+To execute this notebook, download the repository including the processing pipeline contained in [tools](https://github.com/SebastianKotstein/RESTBERTa/tree/master/tools), which is used by the notebook.
+
 ## Web API and UI for Inference
 We created a Flask app that enables the application of a RESTBERTa model through a Web API and UI.
 To use this application, download this repository, navigate to [tools](https://github.com/SebastianKotstein/RESTBERTa/tree/master/tools), and create a docker image with:
