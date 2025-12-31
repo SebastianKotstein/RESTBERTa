@@ -268,7 +268,7 @@ components:
       name: no-answer-strategy
       in: query
       required: false
-      description: "For each fragment, RESTBERTa outputs a treshold value (also refered as 'NULL answer score') that indicates whether the fragment contains the queried Web API element or not. Predicted Web API elements with a score less than this treshold might not be considered as valid answers. Thus, if this query parameter is set to 'threshold', only Web API elements with a score higher than the treshold of the respective fragment (i.e., ) will be returned. If set to 'ignore' or omitted (default), these tresholds will be ignored."
+      description: "For each fragment, RESTBERTa outputs a threshold value (also refered as 'NULL answer score') that indicates whether the fragment contains the queried Web API element or not. Predicted Web API elements with a score less than this threshold might not be considered as valid answers. Thus, if this query parameter is set to 'threshold', only Web API elements with a score higher than the threshold of the respective fragment (i.e., ) will be returned. If set to 'ignore' or omitted (default), these thresholds will be ignored."
       schema:
         type: string
         enum:
